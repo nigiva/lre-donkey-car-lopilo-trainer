@@ -10,8 +10,11 @@ from core.client import Client
 from hardware.joystick import JoystickController
 from controller import Controller
 from brain.brain import Brain
+from manager import DataManager
 
-brain = Brain("/home/nigiva/git/lopilo-trainer/data/model/DCDeepModelV1.3-renault-1613314481.1186156", None)
+data_manager = DataManager("/home/nigiva/git/lopilo-trainer/data/")
+data_manager.copy_model("/home/nigiva/git/lopilo-trainer/data/model/DCDeepModelV1.3-renault-1613314481.1186156")
+brain = Brain(data_manager)
 joystick = JoystickController(0)
 client = Client("127.0.0.1", 9091, convert_json2img = True)
 controller = Controller(client, joystick, brain)

@@ -3,9 +3,9 @@ import tensorflow as tf
 from tensorflow import keras
 
 class Brain:
-    def __init__(self, model_path, data_manager):
+    def __init__(self, data_manager):
         self.model = None
-        self.load(model_path)
+        self.load(data_manager.get_model_path())
         self.data_manager = data_manager
     
     def load(self, model_path):
