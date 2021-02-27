@@ -1,3 +1,4 @@
 *.pyc
 data/*
 *.swp
+*/.ipynb_checkpoints/*

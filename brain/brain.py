@@ -1,18 +1,39 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
+import os
+from .saver import ModelSaver
+import shutil
 
 class Brain:
     def __init__(self, data_manager):
         self.model = None
         self.load(data_manager.get_model_path())
         self.data_manager = data_manager
+        self.model_path = None
     
-    def load(self, model_path):
+    def load(self, model_path, lr = 0.001):
         """
-        Load a model from filepath
+        Load a model from model_path
+        :param model_path: directory path
         """
-        self.model = keras.models.load_model(model_path)
+        # self.model = keras.models.load_model(model_path)
+        self.model_path = model_path
+        DCModel = ModelSaver.load(os.path.join(model_path, "model.code"))
+        self.model = DCModel()
+        self.model.load_weights(os.path.join(model_path, "weights.data"))
+        optimizer = keras.optimizers.Adam(learning_rate=lr)
+        self.model.compile(optimizer=optimizer,loss=keras.losses.MSE, metrics=["mse"])
+
+    def save(self):
+        """
+        Save the brain like a SaveModel, weights.data and model.code
+        :param path: directory path where we want save (directory already created)
+        """
+        if self.model_path is not None:
+            shutil.copy(os.path.join(model_path, "model.code"), os.path.join(self.data_manager.get_model_path(), "model.code"))
+        #self.model.save(self.data_manager.get_model_path())
+        self.model.save_weights(os.path.join(self.data_manager.get_model_path(), "weights.data"))
 
     def predict(self, img):
         """
@@ -24,8 +45,16 @@ class Brain:
         transformed_output = self.output_transformer(output)
         return transformed_output
     
-    def train(self, img, nbr_epoch = 4):
-        pass
+    def train(self, train_dataset, test_dataset, nbr_epoch = 4):
+        """
+        Train model
+        :params train_dataset:
+        :params params: 
+        :params nbr_epoch: number of epochs
+        """
+        history = self.model.fit(train_dataset, validation_data=test_dataset, epochs=nbr_epoch, verbose = 1)
+        self.data_manager.set_log(history)
+        self.save()
     
     def input_transformer(self, img):
         """
