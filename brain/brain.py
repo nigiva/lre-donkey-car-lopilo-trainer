@@ -41,7 +41,7 @@ class Brain:
         :return (angle, throttle, brake)
         """
         transformed_input = self.input_transformer(img)
-        output = self.model.predict({'input' : transformed_input})
+        output = self.model.predict({'input' : transformed_input}) #XXX
         transformed_output = self.output_transformer(output)
         return transformed_output
     
@@ -64,7 +64,7 @@ class Brain:
         img = np.array(img)
         img = np.array([img])
         img_tensor = tf.convert_to_tensor(img, dtype=tf.float32)
-        img_tensor = tf.image.rgb_to_grayscale(img_tensor)
+        #img_tensor = tf.image.rgb_to_grayscale(img_tensor) #XXX
         img_tensor = (img_tensor/127.5) - 1
         return img_tensor
     
@@ -73,7 +73,7 @@ class Brain:
         Transform output from predict function
         :return (angle, throttle, brake)
         """
-        angle = output['angle'][0][0]
+        angle = output['angle'][0][0] #XXX
         angle_satured = 0.4 if abs(angle) > 0.4 else abs(angle)
         throttle = 0.6 - angle_satured
         return (angle, throttle, 0)

@@ -58,7 +58,7 @@ class DataManager:
                 for i, line in enumerate(tqdm(f)):
                     data_line = json.loads(line)
                     if (data_line["msg_type"] == "telemetry"):
-                        image_absolute_path = os.path.join(images_path, str(i) + ".jpg")
+                        image_absolute_path = os.path.join(images_path, str(i) + ".png") #XXX
                         Image.open(BytesIO(base64.b64decode(data_line["image"]))).save(image_absolute_path)
                         data2write = [image_absolute_path, str(data_line["steering_angle"]), str(data_line["throttle"])]
                         csv_file.write(",".join(data2write) + "\n")
@@ -158,18 +158,17 @@ class DataManager:
     
     @staticmethod
     def dict_to_tensor(dataset):
-        #return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path']}, {"angle" : dataset['angle']}))
+        return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path']}, {"angle" : dataset['angle']}))
         #return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path']}, {"angle" : dataset['angle'], "throttle" : dataset['throttle']}))
-        return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path']}, {"angle" : dataset['angle'], "throttle" : dataset['throttle']}))
 
     @staticmethod
     def load_and_preprocess_image(path):
-        IMAGE_SHAPE = (120,160, 1)
+        IMAGE_SHAPE = (120,160, 3) #XXX
 
         file_content = tf.io.read_file(path['input'])
-        tricolors_img = tf.cast(tf.image.decode_jpeg(file_content, channels=3), dtype=tf.float32)
-        gray_img = tf.image.rgb_to_grayscale(tricolors_img)
-        normalized_img = (gray_img / 127.5) - 1
+        tricolors_img = tf.cast(tf.image.decode_png(file_content, channels=3), dtype=tf.float32) #XXX
+        #gray_img = tf.image.rgb_to_grayscale(tricolors_img) #XXX
+        normalized_img = (tricolors_img / 127.5) - 1 #XXX
         normalized_img = tf.reshape(normalized_img, IMAGE_SHAPE)
         return {"input": normalized_img}
 

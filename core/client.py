@@ -98,7 +98,7 @@ class Client:
         :param cam_conf: CamConf object
         """
         self.current_cam_conf = cam_conf
-        self.send_now(self.cam_conf.conf_json)
+        self.send_now(self.current_cam_conf.conf_json)
 
     def flush_msg(self, writable):
         """
