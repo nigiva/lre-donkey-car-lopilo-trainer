@@ -73,6 +73,7 @@ class JoystickController:
         #p = self.get_axis_positive(Axis.RightBack)
         #n = self.get_axis_negative(Axis.LeftBack)
         #return p + n
+        # auto throttle
         angle = self.get_angle_controller()
         angle_satured = 0.4 if abs(angle) > 0.4 else abs(angle)
         return 0.6 - angle_satured

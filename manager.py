@@ -8,6 +8,7 @@ import base64
 from io import BytesIO
 import pandas as pd
 import tensorflow as tf
+from time import time
 
 class DataManager:
     """
@@ -25,7 +26,11 @@ class DataManager:
         self.sample_path = os.path.join(self.data_path, "sample", "sample_" + self.uid)
         os.mkdir(self.sample_path)
 
+        self.sample_base = None
         self.sample_file = None
+
+        self.last_time_save = time()
+
         self.sample_count = 0
         self.log_file = None
 
@@ -44,6 +49,44 @@ class DataManager:
         shutil.copy(path, self.get_sample_path())
         self.load_sample()
     
+    def load_extern_sample(self, path, copy = False):
+        """
+        Load extern dataset to image and csv file
+        Load path + ".eslr" if extracted eslr dataset is not found
+        :param path: path without extension to dataset
+        :param copy: copy the dataset to the folder of save
+        """
+        images_path = os.path.join(path, "images")
+        csv_path = os.path.join(path, "label.csv")
+        if os.path.exists(images_path) and os.path.exists(csv_path):
+            print("[INFO] Extern samples is already extracted")
+            if copy:
+                shutil.copytree(path, self.get_model_path())
+                self.sample_base = self.get_sample_path()
+            else:
+                self.sample_base = path            
+        elif os.path.exists(path + ".eslr"):
+            os.mkdir(path)
+            os.mkdir(images_path)
+            csv_file = open(csv_path, "w")
+            csv_file.write("path,angle,throttle,accel_x,accel_y,accel_z\n")#XXX                
+            with open(path + ".eslr", "r") as f:
+                for i, line in enumerate(tqdm(f)):
+                    data_line = json.loads(line)
+                    if (data_line["msg_type"] == "telemetry"):
+                        image_absolute_path = os.path.join(images_path, str(i) + ".jpeg") #XXX
+                        Image.open(BytesIO(base64.b64decode(data_line["image"]))).save(image_absolute_path)
+                        data2write = [image_absolute_path, str(data_line["user_angle"]), str(data_line["user_throttle"]), str(data_line["accel_x"]), str(data_line["accel_y"]), str(data_line["accel_z"])]#XXX
+                        csv_file.write(",".join(data2write) + "\n")
+            csv_file.close()
+            if copy:
+                shutil.copytree(path, self.get_model_path())
+                self.sample_base = self.get_sample_path()
+            else:
+                self.sample_base = path
+        else:
+            print("[ERROR] Extern samples not found : ", path)
+    
     def load_sample(self):
         """
         Convert eslr file to image and csv file
@@ -53,14 +96,14 @@ class DataManager:
             csv_path = os.path.join(self.get_dir("sample"), "label.csv")
             os.mkdir(images_path)
             csv_file = open(csv_path, "w")
-            csv_file.write("path,angle,throttle\n")                
+            csv_file.write("path,angle,throttle,accel_x,accel_y,accel_z\n")#XXX                
             with open(self.get_sample_path(), "r") as f:
                 for i, line in enumerate(tqdm(f)):
                     data_line = json.loads(line)
                     if (data_line["msg_type"] == "telemetry"):
-                        image_absolute_path = os.path.join(images_path, str(i) + ".png") #XXX
+                        image_absolute_path = os.path.join(images_path, str(i) + ".jpeg") #XXX
                         Image.open(BytesIO(base64.b64decode(data_line["image"]))).save(image_absolute_path)
-                        data2write = [image_absolute_path, str(data_line["steering_angle"]), str(data_line["throttle"])]
+                        data2write = [image_absolute_path, str(data_line["user_angle"]), str(data_line["user_throttle"]), str(data_line["accel_x"]), str(data_line["accel_y"]), str(data_line["accel_z"])]#XXX
                         csv_file.write(",".join(data2write) + "\n")
             csv_file.close()
     
@@ -73,7 +116,7 @@ class DataManager:
             is_first_time = not os.path.exists(self.get_common_pot())
             common_pot = open(self.get_common_pot(), "a")
             if is_first_time:
-                common_pot.write("path,angle,throttle\n")
+                common_pot.write("path,angle,throttle,accel_x,accel_y,accel_z\n")#XXX
             with open(csv_path, "r") as f:
                 for i, line in enumerate(tqdm(f)):
                     if i == 0:
@@ -145,10 +188,19 @@ class DataManager:
             self.sample_count = 0
         self.sample_file = open(os.path.join(self.get_dir("sample"), "sample.eslr"), "w")
     
-    def append_sample(self, json):
-        if self.sample_file is not None:
+    def append_sample(self, json, delay = 1/50, debug = False):
+        """
+        Append record to json file (.eslr)
+        :param json: json to add
+        :param sleep: delay between two record
+        """
+        t = time()
+        if self.sample_file is not None and t - self.last_time_save > delay:
             self.sample_file.write(json + "\n")
             self.sample_count += 1
+            self.last_time_save = t
+            if debug:
+                print(self.sample_count)
 
     def close(self):
         if self.sample_file is not None:
@@ -158,25 +210,27 @@ class DataManager:
     
     @staticmethod
     def dict_to_tensor(dataset):
-        return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path']}, {"angle" : dataset['angle']}))
+        return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path'], "accel" : dataset[['accel_x', 'accel_y', 'accel_z']]}, {"angle" : dataset['angle']}))#XXX
+        #return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path']}, {"angle" : dataset['angle']}))
         #return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path']}, {"angle" : dataset['angle'], "throttle" : dataset['throttle']}))
 
     @staticmethod
-    def load_and_preprocess_image(path):
-        IMAGE_SHAPE = (120,160, 3) #XXX
+    def load_and_preprocess_image(input_dict):
+        IMAGE_SHAPE = (120,160, 3) #xxx
 
-        file_content = tf.io.read_file(path['input'])
-        tricolors_img = tf.cast(tf.image.decode_png(file_content, channels=3), dtype=tf.float32) #XXX
+        file_content = tf.io.read_file(input_dict['input'])
+        tricolors_img = tf.cast(tf.image.decode_jpeg(file_content, channels=3), dtype=tf.float32) #XXX
         #gray_img = tf.image.rgb_to_grayscale(tricolors_img) #XXX
         normalized_img = (tricolors_img / 127.5) - 1 #XXX
         normalized_img = tf.reshape(normalized_img, IMAGE_SHAPE)
-        return {"input": normalized_img}
+
+        return {"input": normalized_img, "accel": input_dict['accel']}#XXX
 
     @staticmethod
     def load_map_function(inputs, outputs):
         return DataManager.load_and_preprocess_image(inputs), outputs
 
-    def make_dataset(self, nbr_base_sample = 2500, nbr_common_pot = 2500, nbr_current_sample = 5000, batch_size = 64, test_ratio = 0.1):
+    def make_dataset(self, nbr_base_sample = 500, nbr_common_pot = 500, nbr_current_sample = 1000, batch_size = 64, test_ratio = 0.1):
         """
         Make dataset in self.id - 1 (file is close) directory
 
@@ -185,14 +239,17 @@ class DataManager:
         :param ratio_current_sample: ratio of samples selected randomly in self.id - 1 dir
         """
         self.load_sample()
-        base_sample_path = os.path.join(self.sample_path, "0", "label.csv")
+        base_sample_path = None
+
         common_pot_path = self.get_common_pot()
-        
+
         current_sample_path = os.path.join(self.sample_path, str(self.id), "label.csv")
         if not os.path.exists(common_pot_path):
             common_pot_path = current_sample_path
-        if not os.path.exists(base_sample_path):
-            base_sample_path = common_pot_path
+
+        base_sample_path = common_pot_path
+        if self.sample_base is not None and os.path.exists(os.path.join(self.sample_base, "label.csv")):
+            base_sample_path = os.path.join(self.sample_base, "label.csv")
 
         base_sample_pd = pd.read_csv(base_sample_path)
         common_pot_pd = pd.read_csv(common_pot_path)

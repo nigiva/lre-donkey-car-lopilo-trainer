@@ -1,13 +1,18 @@
 from threading import Thread
 import json
+import cv2
+import numpy as np
+import os
+os.environ['DISPLAY'] = ':1'
 
 class Controller:
-    def __init__(self, client, hardware, data_manager, brain = None):
+    def __init__(self, client, hardware, data_manager, brain = None, autopilote = True):
         self.client = client
         self.hardware = hardware
         self.brain = brain
         self.data_manager = data_manager
 
+        self.autopilote = autopilote
         self.running = True
 
         self.controller_thread = Thread(target=self.loop)
@@ -18,12 +23,24 @@ class Controller:
             Control loop where the car is driven either in manual mode, either in auto mode
         """
         while self.running:
+            if self.client.img is not None:
+                cv2.imshow('view', cv2.cvtColor(np.array(self.client.img), cv2.COLOR_BGR2RGB))
+                cv2.waitKey(1)
             if self.hardware.get_autodrive_controller():
                 self.manual_mode(record = True)
-            else:
+            elif self.autopilote:
                 self.auto_mode()
+            else:
+                self.manual_mode(record = False)
             if self.hardware.get_rec_controller():
-                self.data_manager.append_sample(json.dumps(self.client.data))
+                #XXX
+                angle = self.hardware.get_angle_controller()
+                throttle = self.hardware.get_throttle_controller()
+                brake = self.hardware.get_brake_controller()
+                self.client.data['user_angle'] = angle
+                self.client.data['user_throttle'] = throttle
+                self.client.data['user_brake'] = brake
+                self.data_manager.append_sample(json.dumps(self.client.data), delay = 1/20, debug = True)
             if self.hardware.get_train_controller():
                 if self.data_manager.sample_count != 0:
                     self.data_manager.close()
@@ -45,8 +62,8 @@ class Controller:
             Auto mode
             The brain predict and drive the car
         """
-        if self.client.img is not None:
-            angle, throttle, brake = self.brain.predict(self.client.img)
+        if self.client.img is not None and self.client.data is not None:#XXX
+            angle, throttle, brake = self.brain.predict(self.client.img, [self.client.data['accel_x'], self.client.data['accel_y'], self.client.data['accel_z']])
             #print(angle, throttle, brake)
             self.client.send_car_control(angle, throttle, brake)
 
@@ -60,8 +77,12 @@ class Controller:
         brake = self.hardware.get_brake_controller()
         self.client.send_car_control(angle, throttle, brake)
         if record and self.brain is not None and self.client.img is not None:
+            #XXX
+            self.client.data['user_angle'] = angle
+            self.client.data['user_throttle'] = throttle
+            self.client.data['user_brake'] = brake
             data = json.dumps(self.client.data)
-            angle_p, throttle_p, brake_p = self.brain.predict(self.client.img)
+            angle_p, throttle_p, brake_p = self.brain.predict(self.client.img, [self.client.data['accel_x'], self.client.data['accel_y'], self.client.data['accel_z']])#XXX
             if abs(angle - angle_p) > 0.1:
                 print(self.data_manager.sample_count)
                 self.data_manager.append_sample(data)
