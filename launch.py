@@ -23,8 +23,8 @@ from brain.brain import Brain
 from manager import DataManager
 
 data_manager = DataManager("/home/nigiva/git/lopilo-trainer/data/")
-data_manager.copy_model("/home/nigiva/git/lopilo-trainer/data/model/extern/DCDeepModelV3.1-reda-renault-record_controller-1615839876.0188637")
-data_manager.load_extern_sample("/home/nigiva/git/lopilo-trainer/data/sample/extern/corentin_renault_20000_record_controller")
+data_manager.copy_model("/home/nigiva/git/lopilo-trainer/data/model/extern/DCDeepModelV3.2-reda-renault-speed-thr0.5_60epoch_1616081089.21272")
+#data_manager.load_extern_sample("/home/nigiva/git/lopilo-trainer/data/sample/extern/corentin_renault_20000_record_controller")
 brain = Brain(data_manager)
 joystick = JoystickController(0)
 data_manager.next()
