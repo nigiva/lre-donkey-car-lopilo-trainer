@@ -6,7 +6,7 @@ import os
 os.environ['DISPLAY'] = ':1'
 
 class Controller:
-    def __init__(self, client, hardware, data_manager, brain = None, autopilote = True):
+    def __init__(self, client, hardware, data_manager, brain = None, autopilote = True, car_config = None):
         self.client = client
         self.hardware = hardware
         self.brain = brain
@@ -15,6 +15,9 @@ class Controller:
         self.autopilote = autopilote
         self.running = True
 
+        self.car_is_driving = False
+        self.car_config = car_config
+
         self.controller_thread = Thread(target=self.loop)
         self.controller_thread.start()
     
@@ -22,6 +25,8 @@ class Controller:
         """
             Control loop where the car is driven either in manual mode, either in auto mode
         """
+        if self.car_config is not None:
+            self.client.send_car_config(*self.car_config)#XXX Car Name
         while self.running:
             if self.client.img is not None:
                 cv2.imshow('view', cv2.cvtColor(np.array(self.client.img), cv2.COLOR_BGR2RGB))
@@ -29,7 +34,9 @@ class Controller:
             if self.hardware.get_autodrive_controller():
                 self.manual_mode(record = True)
             elif self.autopilote:
-                self.auto_mode()
+                if self.car_is_driving or self.hardware.get_start_car():
+                    self.car_is_driving = True
+                    self.auto_mode()
             else:
                 self.manual_mode(record = False)
             if self.hardware.get_rec_controller():
@@ -51,6 +58,7 @@ class Controller:
                     self.data_manager.next()
                     self.client.send_reset()
             if self.hardware.get_reset_controller():
+                self.car_is_driving = False
                 self.client.send_reset()
             if self.hardware.get_exit_app_controller():
                 self.client.stop()
