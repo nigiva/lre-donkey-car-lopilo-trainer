@@ -131,6 +131,16 @@ class Client:
         d["font_size"] = str(font_size)
         self.send_now(json.dumps(d))
 
+    def send_scene(self, scene_name):
+        """
+        Send scene
+        scene_name : generated_road | warehouse | sparkfun_avc | generated_track | ...
+        """
+        d = dict()
+        d["msg_type"] = "load_scene"
+        d["scene_name"] = str(scene_name)
+        self.send_now(json.dumps(d))
+
     def send_car_control(self, angle, throttle, brake):
         """
         Send car control (angle ou steering, throttle, brake)

@@ -67,7 +67,7 @@ class JoystickController:
     ## Same for all hardware class ##
 
     def get_angle_controller(self):
-        return self.get_axis(Axis.LeftHorizontal)
+        return self.get_axis(Axis.RightHorizontal)
 
     def get_throttle_controller(self):
         #p = self.get_axis_positive(Axis.RightBack)
@@ -85,7 +85,7 @@ class JoystickController:
         return self.get_button(Button.Circle)
 
     def get_autodrive_controller(self):
-        return self.get_button(Button.Cross)
+        return self.get_button(Button.LeftBack)
 
     def get_reset_controller(self):
         return self.get_button(Button.Options)
@@ -95,3 +95,6 @@ class JoystickController:
 
     def get_exit_app_controller(self):
         return self.get_button(Button.Home)
+    
+    def get_start_car(self):
+        return self.get_button(Button.RightBack)
