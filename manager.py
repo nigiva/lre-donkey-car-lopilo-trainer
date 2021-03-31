@@ -69,14 +69,14 @@ class DataManager:
             os.mkdir(path)
             os.mkdir(images_path)
             csv_file = open(csv_path, "w")
-            csv_file.write("path,angle,throttle,speed\n")#XXX                
+            csv_file.write("path,angle,throttle,speed,accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z\n")#XXX                
             with open(path + ".eslr", "r") as f:
                 for i, line in enumerate(tqdm(f)):
                     data_line = json.loads(line)
                     if (data_line["msg_type"] == "telemetry"):
                         image_absolute_path = os.path.join(images_path, str(i) + ".jpeg") #XXX
                         Image.open(BytesIO(base64.b64decode(data_line["image"]))).save(image_absolute_path)
-                        data2write = [image_absolute_path, str(data_line["user_angle"]), str(data_line["user_throttle"]), str(data_line["speed"])]#XXX
+                        data2write = [image_absolute_path, str(data_line["user_angle"]), str(data_line["user_throttle"]), str(data_line["speed"]), str(data_line["accel_x"]), str(data_line["accel_y"]), str(data_line["accel_z"]), str(data_line["gyro_x"]), str(data_line["gyro_y"]), str(data_line["gyro_z"])]#XXX
                         csv_file.write(",".join(data2write) + "\n")
             csv_file.close()
             if copy:
@@ -96,14 +96,14 @@ class DataManager:
             csv_path = os.path.join(self.get_dir("sample"), "label.csv")
             os.mkdir(images_path)
             csv_file = open(csv_path, "w")
-            csv_file.write("path,angle,throttle,speed\n")#XXX                
+            csv_file.write("path,angle,throttle,speed,accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z\n")#XXX                
             with open(self.get_sample_path(), "r") as f:
                 for i, line in enumerate(tqdm(f)):
                     data_line = json.loads(line)
                     if (data_line["msg_type"] == "telemetry"):
                         image_absolute_path = os.path.join(images_path, str(i) + ".jpeg") #XXX
                         Image.open(BytesIO(base64.b64decode(data_line["image"]))).save(image_absolute_path)
-                        data2write = [image_absolute_path, str(data_line["user_angle"]), str(data_line["user_throttle"]), str(data_line["speed"])]#XXX
+                        data2write = [image_absolute_path, str(data_line["user_angle"]), str(data_line["user_throttle"]), str(data_line["speed"]), str(data_line["accel_x"]), str(data_line["accel_y"]), str(data_line["accel_z"]), str(data_line["gyro_x"]), str(data_line["gyro_y"]), str(data_line["gyro_z"])]#XXX
                         csv_file.write(",".join(data2write) + "\n")
             csv_file.close()
     
@@ -116,7 +116,7 @@ class DataManager:
             is_first_time = not os.path.exists(self.get_common_pot())
             common_pot = open(self.get_common_pot(), "a")
             if is_first_time:
-                common_pot.write("path,angle,throttle,speed\n")#XXX
+                common_pot.write("path,angle,throttle,speed,accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z\n")#XXX 
             with open(csv_path, "r") as f:
                 for i, line in enumerate(tqdm(f)):
                     if i == 0:
@@ -210,7 +210,7 @@ class DataManager:
     
     @staticmethod
     def dict_to_tensor(dataset):
-        return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path'], "speed" : dataset['speed']}, {"angle" : dataset['angle']}))#XXX
+        return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path'], "speed_accel_gyro" : dataset[['speed', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z']]}, {"angle" : dataset['angle']}))#XXX
         #return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path'], "accel" : dataset[['accel_x', 'accel_y', 'accel_z']]}, {"angle" : dataset['angle']}))
         #return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path']}, {"angle" : dataset['angle']}))
         #return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path']}, {"angle" : dataset['angle'], "throttle" : dataset['throttle']}))
@@ -225,7 +225,7 @@ class DataManager:
         normalized_img = (tricolors_img / 127.5) - 1 #XXX
         normalized_img = tf.reshape(normalized_img, IMAGE_SHAPE)
 
-        return {"input": normalized_img, "speed": input_dict['speed']}#XXX
+        return {"input": normalized_img, "speed_accel_gyro": input_dict['speed_accel_gyro']}#XXX
 
     @staticmethod
     def load_map_function(inputs, outputs):

@@ -35,13 +35,14 @@ class Brain:
         #self.model.save(self.data_manager.get_model_path())
         self.model.save_weights(os.path.join(self.data_manager.get_model_path(), "weights.data"))
 
-    def predict(self, img, speed):#XXX
+    def predict(self, img, speed, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z):#XXX
         """
         Predict actions
         :return (angle, throttle, brake)
         """
-        transformed_img, transformed_speed = self.input_transformer(img, speed)
-        output = self.model.predict({'input' : transformed_img, 'speed':transformed_speed})#XXX
+        transformed_img, transformed_speed_accel_gyro = self.input_transformer(img, speed, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z)
+        #print(tf.shape(transformed_img), tf.shape(transformed_speed_accel_gyro))
+        output = self.model.predict({'input' : transformed_img, 'speed_accel_gyro':transformed_speed_accel_gyro})#XXX
         transformed_output = self.output_transformer(output)
         return transformed_output
     
@@ -56,7 +57,7 @@ class Brain:
         self.data_manager.set_log(history)
         self.save()
     
-    def input_transformer(self, img, speed):
+    def input_transformer(self, img, speed, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z):
         """
         Transform input before passing in arguments to predict/train function
         :return Tensor
@@ -66,8 +67,8 @@ class Brain:
         img_tensor = tf.convert_to_tensor(img, dtype=tf.float32)
         #img_tensor = tf.image.rgb_to_grayscale(img_tensor) #XXX
         img_tensor = (img_tensor/127.5) - 1
-        speed_tensor = tf.convert_to_tensor([speed], dtype=tf.float32)
-        return img_tensor, speed_tensor
+        speed_accel_gyro_tensor = tf.convert_to_tensor([[speed, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z]], dtype=tf.float32)#XXX
+        return img_tensor, speed_accel_gyro_tensor
     
     def output_transformer(self, output):
         """
@@ -76,6 +77,6 @@ class Brain:
         """
         angle = output['angle'][0][0] #XXX
         angle_satured = 0.4 if abs(angle) > 0.4 else abs(angle)
-        #throttle = 0.6 - angle_satured
-        return (angle, 0.5, 0)#XXX
+        throttle = 0.6 - angle_satured
+        return (angle, throttle, 0)#XXX
     

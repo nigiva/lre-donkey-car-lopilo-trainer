@@ -71,8 +71,8 @@ class Controller:
             The brain predict and drive the car
         """
         if self.client.img is not None and self.client.data is not None:#XXX
-            angle, throttle, brake = self.brain.predict(self.client.img, self.client.data['speed'])
-            #print(angle, throttle, brake)
+            angle, throttle, brake = self.brain.predict(self.client.img, self.client.data['speed'], self.client.data['accel_x'], self.client.data['accel_y'], self.client.data['accel_z'], self.client.data['gyro_x'], self.client.data['gyro_y'], self.client.data['gyro_z'])
+            print(angle, throttle, brake)
             self.client.send_car_control(angle, throttle, brake)
 
     def manual_mode(self, record = False):
@@ -90,7 +90,7 @@ class Controller:
             self.client.data['user_throttle'] = throttle
             self.client.data['user_brake'] = brake
             data = json.dumps(self.client.data)
-            angle_p, throttle_p, brake_p = self.brain.predict(self.client.img, self.client.data['speed'])#XXX
+            angle_p, throttle_p, brake_p = self.brain.predict(self.client.img, self.client.data['speed'], self.client.data['accel_x'], self.client.data['accel_y'], self.client.data['accel_z'], self.client.data['gyro_x'], self.client.data['gyro_y'], self.client.data['gyro_z'])#XXX
             if abs(angle - angle_p) > 0.1:
                 print(self.data_manager.sample_count)
                 self.data_manager.append_sample(data)

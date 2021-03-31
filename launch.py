@@ -26,7 +26,7 @@ from manager import DataManager
 car_config = ("car01", 255, 85, 0, "Les Copains d'abord", 25)
 
 data_manager = DataManager("/home/nigiva/git/lopilo-trainer/data/")
-data_manager.copy_model("/home/nigiva/git/lopilo-trainer/data/model/extern/DCDeepModelV3.1-reda-renault-record_controller-1615839876.0188637")
+data_manager.copy_model("/home/nigiva/git/lopilo-trainer/data/model/extern/DCDeepModelV3.2-reda-renault-speed_accel_gyro-80epochs-1617135039.4177356")
 #data_manager.load_extern_sample("/home/nigiva/git/lopilo-trainer/data/sample/extern/corentin_renault_20000_record_controller")
 brain = Brain(data_manager)
 joystick = JoystickController(0)
