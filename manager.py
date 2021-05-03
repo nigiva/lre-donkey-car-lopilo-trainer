@@ -9,12 +9,13 @@ from io import BytesIO
 import pandas as pd
 import tensorflow as tf
 from time import time
+from tensor_builder import DonkeyCarTensorBuilder
 
 class DataManager:
     """
     Manage all data : model savefiles, log files and samples records
     """
-    def __init__(self, data_path, begin_id = 0):
+    def __init__(self, data_path, begin_id = 0, input_label = {'input':['path'], 'speed_accel_gyro':['speed', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z']}, output_label = {'angle':['user_angle']}, num_parallel_calls = 3, image_shape = (120, 160, 3)):
         self.uid = UID()
         self.data_path = data_path
         self.id = begin_id
@@ -25,6 +26,8 @@ class DataManager:
         os.mkdir(self.log_path)
         self.sample_path = os.path.join(self.data_path, "sample", "sample_" + self.uid)
         os.mkdir(self.sample_path)
+
+        self.tensor_builder = DonkeyCarTensorBuilder(input_label = input_label, output_label = output_label, num_parallel_calls = num_parallel_calls, image_shape = image_shape)
 
         self.sample_base = None
         self.sample_file = None
@@ -49,7 +52,7 @@ class DataManager:
         shutil.copy(path, self.get_sample_path())
         self.load_sample()
     
-    def load_extern_sample(self, path, copy = False):
+    def load_extern_sample(self, path, copy = False, image_ext = ".jpeg"):
         """
         Load extern dataset to image and csv file
         Load path + ".eslr" if extracted eslr dataset is not found
@@ -69,15 +72,30 @@ class DataManager:
             os.mkdir(path)
             os.mkdir(images_path)
             csv_file = open(csv_path, "w")
-            csv_file.write("path,angle,throttle,speed,accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z\n")#XXX                
+            label_head_is_defined = False
+                           
             with open(path + ".eslr", "r") as f:
                 for i, line in enumerate(tqdm(f)):
                     data_line = json.loads(line)
                     if (data_line["msg_type"] == "telemetry"):
-                        image_absolute_path = os.path.join(images_path, str(i) + ".jpeg") #XXX
+                        if not label_head_is_defined:
+                            # Si le header n'a pas encore initialisé
+                            label_head_list = list(data_line.keys())
+                            label_head_list.remove("msg_type")
+                            label_head_list.remove("image")
+                            label_head_list = ['path'] + label_head_list
+                            label_head_str = ",".join(label_head_list)
+                            # Écrire le header dans le CSV
+                            csv_file.write(label_head_str + "\n")
+                            label_head_is_defined = True
+                        # Définir le path de l'image à enregistrer
+                        image_absolute_path = os.path.join(images_path, str(i) + image_ext) #XXX
+                        data_line['path'] = image_absolute_path
                         Image.open(BytesIO(base64.b64decode(data_line["image"]))).save(image_absolute_path)
-                        data2write = [image_absolute_path, str(data_line["user_angle"]), str(data_line["user_throttle"]), str(data_line["speed"]), str(data_line["accel_x"]), str(data_line["accel_y"]), str(data_line["accel_z"]), str(data_line["gyro_x"]), str(data_line["gyro_y"]), str(data_line["gyro_z"])]#XXX
-                        csv_file.write(",".join(data2write) + "\n")
+                        # Ajouter toutes les données de la ligne lue dans un le CSV
+                        # Mettre 0 comme valeur par défaut si la valeur n'est pas trouvée dans data_line
+                        data_list_to_write = [str(data_line.get(k, 0)) for k in label_head_list]
+                        csv_file.write(",".join(data_list_to_write) + "\n")
             csv_file.close()
             if copy:
                 shutil.copytree(path, self.get_model_path())
@@ -87,7 +105,7 @@ class DataManager:
         else:
             print("[ERROR] Extern samples not found : ", path)
     
-    def load_sample(self):
+    def load_sample(self, image_ext = ".jpeg"):
         """
         Convert eslr file to image and csv file
         """
@@ -96,15 +114,29 @@ class DataManager:
             csv_path = os.path.join(self.get_dir("sample"), "label.csv")
             os.mkdir(images_path)
             csv_file = open(csv_path, "w")
-            csv_file.write("path,angle,throttle,speed,accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z\n")#XXX                
+            label_head_is_defined = False             
             with open(self.get_sample_path(), "r") as f:
                 for i, line in enumerate(tqdm(f)):
                     data_line = json.loads(line)
                     if (data_line["msg_type"] == "telemetry"):
-                        image_absolute_path = os.path.join(images_path, str(i) + ".jpeg") #XXX
+                        if not label_head_is_defined:
+                            # Si le header n'a pas encore initialisé
+                            label_head_list = list(data_line.keys())
+                            label_head_list.remove("msg_type")
+                            label_head_list.remove("image")
+                            label_head_list = ['path'] + label_head_list
+                            label_head_str = ",".join(label_head_list)
+                            # Écrire le header dans le CSV
+                            csv_file.write(label_head_str + "\n")
+                            label_head_is_defined = True
+                        # Définir le path de l'image à enregistrer
+                        image_absolute_path = os.path.join(images_path, str(i) + image_ext) #XXX
+                        data_line['path'] = image_absolute_path
                         Image.open(BytesIO(base64.b64decode(data_line["image"]))).save(image_absolute_path)
-                        data2write = [image_absolute_path, str(data_line["user_angle"]), str(data_line["user_throttle"]), str(data_line["speed"]), str(data_line["accel_x"]), str(data_line["accel_y"]), str(data_line["accel_z"]), str(data_line["gyro_x"]), str(data_line["gyro_y"]), str(data_line["gyro_z"])]#XXX
-                        csv_file.write(",".join(data2write) + "\n")
+                        # Ajouter toutes les données de la ligne lue dans un le CSV
+                        # Mettre 0 comme valeur par défaut si la valeur n'est pas trouvée dans data_line
+                        data_list_to_write = [str(data_line.get(k, 0)) for k in label_head_list]
+                        csv_file.write(",".join(data_list_to_write) + "\n")
             csv_file.close()
     
     def add_to_common_pot(self):
@@ -115,12 +147,12 @@ class DataManager:
         if os.path.exists(csv_path):
             is_first_time = not os.path.exists(self.get_common_pot())
             common_pot = open(self.get_common_pot(), "a")
-            if is_first_time:
-                common_pot.write("path,angle,throttle,speed,accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z\n")#XXX 
             with open(csv_path, "r") as f:
                 for i, line in enumerate(tqdm(f)):
                     if i == 0:
-                        continue
+                        if is_first_time:
+                            common_pot.write(line)#XXX
+                            continue
                     common_pot.write(line)
             common_pot.close()
 
@@ -207,29 +239,6 @@ class DataManager:
             self.sample_file.close()
             self.sample_file = None
             self.sample_count = 0
-    
-    @staticmethod
-    def dict_to_tensor(dataset):
-        return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path'], "speed_accel_gyro" : dataset[['speed', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z']]}, {"angle" : dataset['angle']}))#XXX
-        #return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path'], "accel" : dataset[['accel_x', 'accel_y', 'accel_z']]}, {"angle" : dataset['angle']}))
-        #return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path']}, {"angle" : dataset['angle']}))
-        #return tf.data.Dataset.from_tensor_slices(({"input" : dataset['path']}, {"angle" : dataset['angle'], "throttle" : dataset['throttle']}))
-
-    @staticmethod
-    def load_and_preprocess_image(input_dict):
-        IMAGE_SHAPE = (120,160, 3) #xxx
-
-        file_content = tf.io.read_file(input_dict['input'])
-        tricolors_img = tf.cast(tf.image.decode_jpeg(file_content, channels=3), dtype=tf.float32) #XXX
-        #gray_img = tf.image.rgb_to_grayscale(tricolors_img) #XXX
-        normalized_img = (tricolors_img / 127.5) - 1 #XXX
-        normalized_img = tf.reshape(normalized_img, IMAGE_SHAPE)
-
-        return {"input": normalized_img, "speed_accel_gyro": input_dict['speed_accel_gyro']}#XXX
-
-    @staticmethod
-    def load_map_function(inputs, outputs):
-        return DataManager.load_and_preprocess_image(inputs), outputs
 
     def make_dataset(self, nbr_base_sample = 500, nbr_common_pot = 500, nbr_current_sample = 1000, batch_size = 64, test_ratio = 0.1):
         """
@@ -260,13 +269,13 @@ class DataManager:
         common_pot_size = common_pot_pd.shape[0]
         current_sample_size = current_sample_pd.shape[0]
 
-        base_sample_tensor = self.dict_to_tensor(base_sample_pd).shuffle(base_sample_size)
-        common_pot_tensor = self.dict_to_tensor(common_pot_pd).shuffle(common_pot_size)
-        current_sample_tensor = self.dict_to_tensor(current_sample_pd).shuffle(current_sample_size)
+        base_sample_tensor = self.tensor_builder.dataset_to_tensor(base_sample_pd).shuffle(base_sample_size)
+        common_pot_tensor = self.tensor_builder.dataset_to_tensor(common_pot_pd).shuffle(common_pot_size)
+        current_sample_tensor = self.tensor_builder.dataset_to_tensor(current_sample_pd).shuffle(current_sample_size)
 
-        base_sample_tensor = base_sample_tensor.map(self.load_map_function, num_parallel_calls=3)
-        common_pot_tensor = common_pot_tensor.map(self.load_map_function, num_parallel_calls=3)
-        current_sample_tensor = current_sample_tensor.map(self.load_map_function, num_parallel_calls=3)
+        base_sample_tensor = self.tensor_builder.normalize_dataset(self.tensor_builder.load_image(base_sample_tensor))
+        common_pot_tensor = self.tensor_builder.normalize_dataset(self.tensor_builder.load_image(common_pot_tensor))
+        current_sample_tensor = self.tensor_builder.normalize_dataset(self.tensor_builder.load_image(current_sample_tensor))
 
         test_base_sample_tensor = base_sample_tensor.take(int(nbr_base_sample * test_ratio))
         test_common_pot_tensor = common_pot_tensor.take(int(nbr_common_pot * test_ratio))

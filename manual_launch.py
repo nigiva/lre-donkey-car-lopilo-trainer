@@ -20,7 +20,10 @@ from controller import Controller
 from brain.brain import Brain
 from manager import DataManager
 
-data_manager = DataManager("/home/nigiva/git/lopilo-trainer/data/")
+input_label = {'input':['path'], 'speed_accel_gyro':['speed', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z']}
+output_label = {'angle':['user_angle']}
+
+data_manager = DataManager("/home/nigiva/git/lopilo-trainer/data/", input_label=input_label, output_label=output_label)
 #data_manager.copy_model("/home/nigiva/git/lopilo-trainer/data/model/extern/DCDeepModelV2-renault-1614457001.1865957")
 #data_manager.load_extern_sample("/home/nigiva/git/lopilo-trainer/data/sample/extern/alexis_renault_cam_rot_43000")
 #brain = Brain(data_manager)
