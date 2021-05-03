@@ -1,3 +1,4 @@
 {
-    "python.pythonPath": "/home/nigiva/anaconda3/envs/donkey/bin/python"
+    "python.pythonPath": "/home/nigiva/anaconda3/envs/donkey/bin/python",
+    "jupyter.jupyterServerType": "local"
 }
