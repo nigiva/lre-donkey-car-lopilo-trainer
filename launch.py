@@ -10,6 +10,9 @@ import sys
 
 os.environ['DISPLAY'] = ':1'
 os.environ['QT_DEBUG_PLUGINS'] = '1'
+
+# On CPU !
+os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 # For avoid warning in Visual Code
 currentdir = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(currentdir)
@@ -23,7 +26,7 @@ from brain.brain import Brain
 from manager import DataManager
 
 # Car type(donkey | bare | car01), R, G, B, Name, Font size
-car_config = ("donkey", 255, 85, 0, "Les Copains d'abord", 25)
+car_config = ("donkey", 255, 85, 0, "Ahhhhhhhhhhhh", 25)
 
 input_label = {'input':['path'], 'speed_accel_gyro':['speed', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z']}
 output_label = {'angle':['user_angle']}
@@ -36,8 +39,11 @@ joystick = JoystickController(0)
 data_manager.next()
 
 
-# sim.diyrobocars.fr 9091
-client = Client("127.0.0.1", 9091, convert_json2img = True)
+# Competition : sim.diyrobocars.fr 9091
+# Gandalf : 192.168.103.37 9091
+# 35.204.119.122
+
+client = Client("192.168.103.37", 9091, convert_json2img = True)
 client.send_scene("roboracingleague_1")
 #cc = CamConf(fov=100, fish_eye_x=0.1, fish_eye_y=0.0, img_w=160, img_h=120, img_d=3,
 #                    img_enc="JPEG", offset_x=0.0, offset_y=3.5, offset_z=2.0, rot_x=70.0) #XXX
